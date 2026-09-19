@@ -21,6 +21,7 @@ outputs/
 # 测试与评测（仅本地）
 tests/
 evaluation/
+*.spec.ts
 
 # 前端依赖与构建产物
 node_modules/
