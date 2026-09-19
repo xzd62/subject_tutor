@@ -1,0 +1,47 @@
+[project]
+name = "tutor-rag"
+version = "0.1.0"
+description = "初中家教 RAG 一期：教材转换 / 标题切块 / 本地向量化 / Chroma 入库"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.141.0",
+    "uvicorn[standard]>=0.53.0",
+    "python-multipart>=0.0.32",
+    "langchain>=1.4.0",
+    "langgraph>=1.2.0",
+    "langgraph-checkpoint-sqlite>=3.1.0",
+    "langchain-deepseek>=1.1.0",
+    "rank_bm25>=0.2.2",
+    "jieba>=0.42.1",
+    "markitdown[pdf]>=0.1.0",
+    "llama-index-core>=0.12.0",
+    "llama-index-embeddings-huggingface>=0.5.0",
+    "llama-index-vector-stores-chroma>=0.4.0",
+    "chromadb>=0.5.0",
+    "torch>=2.6.0",
+    "python-dotenv>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "httpx>=0.28.0",
+]
+
+[project.scripts]
+tutor-rag = "tutor_rag.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tutor_rag"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "slow: 需要本地模型或较重的端到端测试",
+    "live: 需要真实 LLM API key 的测试",
+]

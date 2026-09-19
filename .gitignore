@@ -1,9 +1,26 @@
-# 敏感数据 - 绝不提交
-.env
-
-# 运行时生成的数据
-chroma_db/
-
-# Python 缓存
+# 虚拟环境与缓存
+.venv/
 __pycache__/
 *.pyc
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# 本地数据与产物
+data/
+models/
+outputs/
+
+# 本地配置与文档（不推远端）
+.env
+.env.example
+需求文档.md
+开发记录.md
+
+# 测试与评测（仅本地）
+tests/
+evaluation/
+
+# 前端依赖与构建产物
+node_modules/

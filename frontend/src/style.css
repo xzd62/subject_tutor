@@ -1,0 +1,312 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  color: #1f2329;
+  background: #f5f6f8;
+}
+
+.app-shell {
+  height: 100%;
+}
+
+.sidebar {
+  background: #1f2d3d;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar .brand {
+  height: 56px;
+  line-height: 56px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.sidebar-menu {
+  border-right: none;
+  flex: 1;
+  background: transparent;
+}
+
+.sidebar-menu .el-menu-item {
+  color: #cfd8e3;
+}
+
+.sidebar-menu .el-menu-item.is-active {
+  color: #fff;
+  background: rgba(64, 158, 255, 0.25);
+}
+
+.sidebar-footer {
+  padding: 12px;
+  font-size: 12px;
+  color: #7f8c9b;
+  text-align: center;
+}
+
+.main-area {
+  padding: 16px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.page {
+  height: 100%;
+  overflow: auto;
+}
+
+.page h2 {
+  margin: 0 0 16px;
+  font-size: 20px;
+}
+
+.chat-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.chat-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #eceff3;
+}
+
+.chat-title {
+  font-weight: 600;
+}
+
+.chat-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.session-select {
+  width: 220px;
+}
+
+.session-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.session-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-delete {
+  color: #c45656;
+}
+
+.detail-body {
+  min-height: 200px;
+}
+
+.detail-meta {
+  margin-bottom: 12px;
+}
+
+.chunk-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #3d4753;
+  line-height: 1.7;
+}
+
+.math-fallback {
+  color: #c45656;
+  background: #fdf3f3;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+pre.math-fallback {
+  padding: 10px;
+  overflow: auto;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+.bubble-row {
+  display: flex;
+  margin-bottom: 14px;
+}
+
+.bubble-row.user {
+  justify-content: flex-end;
+}
+
+.bubble {
+  max-width: 82%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  line-height: 1.7;
+  background: #f2f4f7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.bubble-row.user .bubble {
+  background: #d9ecff;
+  white-space: pre-wrap;
+}
+
+.status-line {
+  color: #8a94a6;
+  font-size: 13px;
+}
+
+.retrieval-panel {
+  margin-top: 10px;
+  border-top: 1px dashed #dfe4ea;
+}
+
+.retrieval-hit {
+  padding: 6px 0;
+  border-bottom: 1px dashed #eceff3;
+}
+
+.retrieval-hit:last-child {
+  border-bottom: none;
+}
+
+.retrieval-head {
+  display: flex;
+  gap: 6px;
+  font-size: 13px;
+  color: #31527a;
+}
+
+.retrieval-preview {
+  font-size: 12px;
+  color: #5c6673;
+  margin: 4px 0;
+}
+
+.retrieval-score {
+  font-size: 12px;
+  color: #98a2b3;
+}
+
+.chat-input {
+  border-top: 1px solid #eceff3;
+  padding: 12px 16px;
+}
+
+.chat-input-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.markdown-body {
+  white-space: normal;
+}
+
+.markdown-body p {
+  margin: 6px 0;
+}
+
+.markdown-body pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 10px;
+  border-radius: 6px;
+  overflow: auto;
+}
+
+.markdown-body code {
+  background: rgba(15, 23, 42, 0.08);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.markdown-body pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-body table {
+  border-collapse: collapse;
+  margin: 8px 0;
+}
+
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid #dfe4ea;
+  padding: 4px 8px;
+}
+
+.table-card {
+  margin-top: 16px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pending-tag {
+  margin-left: 6px;
+}
+
+.detail-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.muted {
+  color: #98a2b3;
+  font-size: 12px;
+}
+
+.hint {
+  color: #8a94a6;
+  font-size: 12px;
+  margin-left: 8px;
+}
