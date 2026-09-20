@@ -20,6 +20,7 @@ dependencies = [
     "chromadb>=0.5.0",
     "torch>=2.6.0",
     "python-dotenv>=1.0.0",
+    "redis>=8.1.0",
 ]
 
 [dependency-groups]
@@ -34,6 +35,10 @@ tutor-rag = "tutor_rag.cli:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[[tool.uv.index]]
+url = "https://mirrors.aliyun.com/pypi/simple/"
+default = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tutor_rag"]

@@ -148,6 +148,17 @@ class RetrievalConfig:
 
 
 @dataclass(frozen=True)
+class CacheConfig:
+    enabled: bool = _env_bool("TUTOR_RAG_CACHE_ENABLED", True)
+    redis_url: str = _env_str("TUTOR_RAG_CACHE_REDIS_URL", "redis://127.0.0.1:6379/0")
+    namespace: str = _env_str("TUTOR_RAG_CACHE_NAMESPACE", "tutor")
+    threshold: float = _env_float("TUTOR_RAG_CACHE_THRESHOLD", 0.95)
+    ttl_seconds: int = _env_int("TUTOR_RAG_CACHE_TTL", 604800)
+    vector_dim: int = _env_int("TUTOR_RAG_CACHE_VECTOR_DIM", 1024)
+    protect_numeric: bool = _env_bool("TUTOR_RAG_CACHE_PROTECT_NUMERIC", True)
+
+
+@dataclass(frozen=True)
 class SubAgentConfig:
     enabled: bool = _env_bool("TUTOR_RAG_SUBAGENTS_ENABLED", True)
     top_k: int = _env_int("TUTOR_RAG_SUBAGENT_TOP_K", 5)
@@ -186,6 +197,7 @@ class Settings:
     retrieval: RetrievalConfig = field(default_factory=RetrievalConfig)
     memory: MemoryConfig = field(default_factory=MemoryConfig)
     subagents: SubAgentConfig = field(default_factory=SubAgentConfig)
+    cache: CacheConfig = field(default_factory=CacheConfig)
 
 
 _cached: Settings | None = None

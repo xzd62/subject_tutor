@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse
 from ..config import PROJECT_ROOT, Settings
 from ..trace import get_logger, setup_logging
 from .routes_books import router as books_router
+from .routes_cache import router as cache_router
 from .routes_chat import router as chat_router
 from .routes_memories import router as memories_router
 from .routes_sessions import router as sessions_router
@@ -52,6 +53,7 @@ def create_app(settings: Settings | None = None, runtime: RuntimeState | None = 
     app.include_router(settings_router)
     app.include_router(system_router)
     app.include_router(memories_router)
+    app.include_router(cache_router)
 
     @app.get("/api/health")
     def health(request: Request) -> dict:
@@ -63,6 +65,7 @@ def create_app(settings: Settings | None = None, runtime: RuntimeState | None = 
             "model_error": state.model_error,
             "corpus_size": state.retrieval.corpus_size,
             "collection_chunks": state.retrieval.store.count(),
+            "cache": state.cache.stats_payload(),
         }
 
     dist_dir = PROJECT_ROOT / "frontend" / "dist"

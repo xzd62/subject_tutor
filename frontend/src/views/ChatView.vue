@@ -13,6 +13,7 @@ interface ChatMessage {
   retrieval?: RetrievalData | null
   status?: string
   error?: string
+  cache?: { hit_type: string; score: number; cache_id: string }
 }
 
 const STORAGE_KEY = 'tutor-thread-id'
@@ -23,6 +24,13 @@ const connected = ref(false)
 const scroller = ref<HTMLElement | null>(null)
 const sessions = ref<SessionItem[]>([])
 const threadId = ref('')
+const CACHE_KEY = 'tutor-cache-enabled'
+const cacheEnabled = ref(localStorage.getItem(CACHE_KEY) !== '0')
+const bypassCacheOnce = ref(false)
+
+function persistCacheSetting(): void {
+  localStorage.setItem(CACHE_KEY, cacheEnabled.value ? '1' : '0')
+}
 
 const socket = new ChatSocket()
 
@@ -113,6 +121,29 @@ function handleEvent(event: ChatEvent): void {
     }
     return
   }
+  if (event.type === 'cache') {
+    const message = lastAssistant()
+    if (message) {
+      message.status = ''
+      if (event.data.hit) {
+        message.cache = {
+          hit_type: event.data.hit_type ?? 'exact',
+          score: event.data.score ?? 1,
+          cache_id: event.data.cache_id ?? '',
+        }
+        if (event.data.sources && event.data.sources.length) {
+          message.retrieval = {
+            query: '',
+            top_k: event.data.sources.length,
+            degraded: null,
+            elapsed_ms: {},
+            hits: event.data.sources,
+          }
+        }
+      }
+    }
+    return
+  }
   if (event.type === 'token') {
     const message = lastAssistant()
     if (message) {
@@ -151,12 +182,38 @@ function send(): void {
   input.value = ''
   streaming.value = true
   try {
-    socket.send({ message: text, thread_id: threadId.value })
+    socket.send({
+      message: text,
+      thread_id: threadId.value,
+      use_cache: cacheEnabled.value && !bypassCacheOnce.value,
+    })
   } catch (error) {
     streaming.value = false
     ElMessage.error((error as Error).message)
+  } finally {
+    bypassCacheOnce.value = false
   }
   void scrollToBottom()
+}
+
+async function reanswer(index: number): Promise<void> {
+  const assistant = messages.value[index]
+  const userMessage = messages.value[index - 1]
+  if (!assistant || assistant.role !== 'assistant' || !userMessage || userMessage.role !== 'user') {
+    return
+  }
+  const cacheId = assistant.cache?.cache_id
+  if (cacheId) {
+    try {
+      await http.del(`/api/cache/${encodeURIComponent(cacheId)}`)
+    } catch {
+      // 缓存可能已过期，继续重新生成
+    }
+  }
+  messages.value.splice(index - 1, 2)
+  input.value = userMessage.content
+  bypassCacheOnce.value = true
+  send()
 }
 
 function stop(): void {
@@ -231,6 +288,12 @@ onBeforeUnmount(() => socket.close())
     <div class="chat-toolbar">
       <div class="chat-title">AI 对话</div>
       <div class="chat-actions">
+        <el-switch
+          v-model="cacheEnabled"
+          size="small"
+          active-text="语义缓存"
+          @change="persistCacheSetting"
+        />
         <el-tag :type="connected ? 'success' : 'info'" size="small">
           {{ connected ? '已连接' : '连接中' }}
         </el-tag>
@@ -275,6 +338,14 @@ onBeforeUnmount(() => socket.close())
       >
         <div class="bubble">
           <template v-if="message.role === 'assistant'">
+            <div v-if="message.cache" class="cache-line">
+              <el-tag type="warning" size="small">
+                ⚡ 来自缓存（相似度 {{ Math.round((message.cache.score ?? 1) * 100) }}%）
+              </el-tag>
+              <el-button link type="primary" size="small" @click="reanswer(index)">
+                重新回答
+              </el-button>
+            </div>
             <div v-if="message.status" class="status-line">{{ message.status }}</div>
             <MarkdownText v-if="message.content" :content="message.content" />
             <el-alert

@@ -8,8 +8,11 @@ from typing import Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from ..agent.factory import build_tutor_agent
+from ..cache import memory_fingerprint, model_fingerprint, prompt_fingerprint, sha1_text
+from ..memory import MemoryStore
 from ..retrieval.types import RetrievalResult
 from ..trace import get_logger
+from .routes_sessions import read_thread_messages
 from .state import RuntimeState
 
 router = APIRouter()
@@ -69,7 +72,13 @@ async def chat_websocket(websocket: WebSocket) -> None:
                 await websocket.send_json({"type": "error", "message": "消息不能为空"})
                 continue
             runtime.sessions.ensure_session(thread_id, message)
-            await _stream_reply(runtime, websocket, message, thread_id)
+            await _stream_reply(
+                runtime,
+                websocket,
+                message,
+                thread_id,
+                use_cache=bool(payload.get("use_cache", True)),
+            )
     except WebSocketDisconnect:
         get_logger().info("WebSocket 客户端断开")
     except Exception as exc:
@@ -80,11 +89,30 @@ async def chat_websocket(websocket: WebSocket) -> None:
             pass
 
 
+def chunk_text(text: str, size: int = 24) -> list[str]:
+    return [text[index : index + size] for index in range(0, len(text), size)]
+
+
+def _cache_fingerprints(runtime: RuntimeState, thread_id: str) -> dict[str, str]:
+    store = MemoryStore(runtime.settings.paths.memories_dir, runtime.settings.memory)
+    history = read_thread_messages(runtime.checkpointer, thread_id)
+    last_user = next(
+        (item["content"] for item in reversed(history) if item["role"] == "user"), ""
+    )
+    return {
+        "model_fp": model_fingerprint(runtime.chat_config),
+        "memory_fp": memory_fingerprint(store),
+        "context_fp": sha1_text(last_user)[:16] if last_user.strip() else "",
+        "prompt_fp": prompt_fingerprint(),
+    }
+
+
 async def _stream_reply(
     runtime: RuntimeState,
     websocket: WebSocket,
     message: str,
     thread_id: str,
+    use_cache: bool = True,
 ) -> None:
     loop = asyncio.get_running_loop()
     queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
@@ -98,6 +126,41 @@ async def _stream_reply(
         await websocket.send_json({"type": "error", "message": str(exc)})
         return
 
+    fingerprints: dict[str, str] = {}
+    cache_active = use_cache and runtime.cache.enabled
+    if cache_active:
+        try:
+            fingerprints = _cache_fingerprints(runtime, thread_id)
+            hit = runtime.cache.lookup(message, **fingerprints)
+        except Exception as exc:
+            get_logger().warning("缓存查询异常，按未命中处理: %r", exc)
+            hit = None
+        if hit is not None:
+            runtime.append_exchange(thread_id, message, hit.answer)
+            await websocket.send_json(
+                {
+                    "type": "cache",
+                    "data": {
+                        "hit": True,
+                        "hit_type": hit.hit_type,
+                        "score": round(hit.score, 4),
+                        "cache_id": hit.cache_id,
+                        "sources": hit.sources,
+                    },
+                }
+            )
+            for piece in chunk_text(hit.answer):
+                await websocket.send_json({"type": "token", "text": piece})
+            await websocket.send_json({"type": "done"})
+            return
+
+    collected_sources: list[dict[str, Any]] = []
+
+    def on_retrieval(result: RetrievalResult) -> None:
+        data = serialize_retrieval(result)
+        collected_sources[:] = data["hits"]
+        push({"type": "retrieval", "data": data})
+
     agent = build_tutor_agent(
         settings=runtime.settings,
         model=model,
@@ -105,17 +168,28 @@ async def _stream_reply(
         retrieval=runtime.settings.retrieval.enabled,
         retrieval_service=runtime.retrieval,
         on_retrieval_start=lambda _query: push({"type": "status", "stage": "retrieving"}),
-        on_retrieval=lambda result: push(
-            {"type": "retrieval", "data": serialize_retrieval(result)}
-        ),
+        on_retrieval=on_retrieval,
         on_tool_event=lambda event: push(tool_status_event(event)),
     )
 
     def run() -> None:
+        answer_parts: list[str] = []
         try:
             push({"type": "status", "stage": "thinking"})
             for piece in agent.stream(message, thread_id):
+                answer_parts.append(piece)
                 push({"type": "token", "text": piece})
+            answer = "".join(answer_parts).strip()
+            if cache_active and answer:
+                try:
+                    runtime.cache.store(
+                        message,
+                        answer,
+                        collected_sources,
+                        **fingerprints,
+                    )
+                except Exception as exc:
+                    get_logger().warning("缓存写入异常: %r", exc)
             push({"type": "done"})
         except Exception as exc:
             get_logger().warning("对话生成失败: %r", exc)

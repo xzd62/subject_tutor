@@ -184,6 +184,13 @@ pre.math-fallback {
   font-size: 13px;
 }
 
+.cache-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
 .retrieval-panel {
   margin-top: 10px;
   border-top: 1px dashed #dfe4ea;

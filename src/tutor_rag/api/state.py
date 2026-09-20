@@ -13,7 +13,9 @@ from typing import Any, Callable
 from langchain_core.language_models import BaseChatModel
 from langgraph.checkpoint.sqlite import SqliteSaver
 
+from ..agent.factory import build_tutor_agent
 from ..agent.llm import create_model, model_label
+from ..cache import SemanticCache
 from ..config import ChatConfig, Settings, get_settings
 from ..retrieval.service import RetrievalService
 from ..trace import get_logger
@@ -133,6 +135,8 @@ class RuntimeState:
         self.checkpointer = SqliteSaver(self._checkpoint_conn)
         self.sessions = SessionRegistry(self.checkpoint_db)
         self.retrieval = RetrievalService(self.settings)
+        self.cache = SemanticCache(self.settings.cache, embedder=self.retrieval.embedder)
+        self._history_agent = None
         self.ingest_lock = threading.Lock()
         self.model_lock = threading.Lock()
         self.model_factory: Callable[[str, ChatConfig], BaseChatModel] = create_model
@@ -150,6 +154,26 @@ class RuntimeState:
             self.model = None
             self.model_error = str(exc)
             get_logger().warning("Web 模型初始化失败: %r", exc)
+
+    def append_exchange(self, thread_id: str, question: str, answer: str) -> None:
+        from langchain.messages import AIMessage, HumanMessage
+
+        try:
+            if self._history_agent is None:
+                self._history_agent = build_tutor_agent(
+                    settings=self.settings,
+                    model=self.get_model(),
+                    checkpointer=self.checkpointer,
+                    retrieval=False,
+                    memory=False,
+                    subagents=False,
+                )
+            self._history_agent.graph.update_state(
+                self._history_agent.thread_config(thread_id),
+                {"messages": [HumanMessage(content=question), AIMessage(content=answer)]},
+            )
+        except Exception as exc:
+            get_logger().warning("缓存命中写入会话历史失败: %r", exc)
 
     def get_model(self) -> BaseChatModel:
         if self.model is None:

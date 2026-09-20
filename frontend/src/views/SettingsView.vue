@@ -2,7 +2,31 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { http } from '../api/http'
-import type { ModelPreset, ModelSettings } from '../api/types'
+import type { CacheStats, ModelPreset, ModelSettings } from '../api/types'
+
+const cacheStats = ref<CacheStats | null>(null)
+const clearingCache = ref(false)
+
+async function loadCacheStats(): Promise<void> {
+  try {
+    cacheStats.value = await http.get<CacheStats>('/api/cache/stats')
+  } catch {
+    cacheStats.value = null
+  }
+}
+
+async function clearCache(): Promise<void> {
+  clearingCache.value = true
+  try {
+    const data = await http.post<{ removed: number }>('/api/cache/clear')
+    ElMessage.success(`已清空语义缓存（${data.removed} 条）`)
+    await loadCacheStats()
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  } finally {
+    clearingCache.value = false
+  }
+}
 
 const settings = reactive<ModelSettings>({
   model: 'deepseek:deepseek-flash',
@@ -58,7 +82,9 @@ async function testConnection(): Promise<void> {
   }
 }
 
-onMounted(load)
+onMounted(async () => {
+  await Promise.all([load(), loadCacheStats()])
+})
 </script>
 
 <template>
@@ -137,6 +163,41 @@ onMounted(load)
         换模型只需改这里：不同厂商需安装对应 langchain-* 集成包（如 langchain-openai）；
         对话历史保留在服务进程内，切换模型不影响当前会话。
       </div>
+    </el-card>
+
+    <el-card shadow="never" style="max-width: 720px; margin-top: 16px">
+      <template #header>
+        <div class="card-header">
+          <span>语义缓存（Redis）</span>
+          <el-tag :type="cacheStats?.connected ? 'success' : 'info'" size="small">
+            {{ cacheStats?.connected ? '已连接' : '未连接' }}
+          </el-tag>
+        </div>
+      </template>
+      <template v-if="cacheStats">
+        <el-descriptions :column="3" size="small" border>
+          <el-descriptions-item label="缓存条数">{{ cacheStats.entries }}</el-descriptions-item>
+          <el-descriptions-item label="命中率">
+            {{ cacheStats.hit_rate === null ? '-' : `${Math.round(cacheStats.hit_rate * 100)}%` }}
+          </el-descriptions-item>
+          <el-descriptions-item label="相似度阈值">{{ cacheStats.threshold }}</el-descriptions-item>
+          <el-descriptions-item label="精确命中">
+            {{ cacheStats.counters.hit_exact ?? 0 }}
+          </el-descriptions-item>
+          <el-descriptions-item label="语义命中">
+            {{ cacheStats.counters.hit_semantic ?? 0 }}
+          </el-descriptions-item>
+          <el-descriptions-item label="数字题保护">
+            {{ cacheStats.protect_numeric ? '已开启' : '已关闭' }}
+          </el-descriptions-item>
+        </el-descriptions>
+        <div style="margin-top: 12px; display: flex; justify-content: flex-end">
+          <el-button size="small" :loading="clearingCache" @click="clearCache">
+            清空语义缓存
+          </el-button>
+        </div>
+      </template>
+      <el-empty v-else description="缓存服务不可用" :image-size="60" />
     </el-card>
   </div>
 </template>

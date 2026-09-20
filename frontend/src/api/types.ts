@@ -27,11 +27,32 @@ export type ChatEvent =
       data: { tool: string; args: Record<string, string> }
     }
   | { type: 'status'; stage: 'subagent'; data: { subject: string } }
+  | {
+      type: 'cache'
+      data: {
+        hit: boolean
+        hit_type?: string
+        score?: number
+        cache_id?: string
+        sources?: RetrievalHit[]
+      }
+    }
   | { type: 'retrieval'; data: RetrievalData }
   | { type: 'token'; text: string }
   | { type: 'done' }
   | { type: 'error'; message: string }
   | { type: 'reset_ok' }
+
+export interface CacheStats {
+  enabled: boolean
+  connected: boolean
+  namespace: string
+  threshold: number
+  protect_numeric: boolean
+  entries: number
+  hit_rate: number | null
+  counters: Record<string, number>
+}
 
 export interface MemoryItem {
   name: string
